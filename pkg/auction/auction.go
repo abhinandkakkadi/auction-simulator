@@ -3,8 +3,15 @@ package auction
 import (
 	"auction-simulator/pkg/bidder"
 	"auction-simulator/pkg/models"
+	"fmt"
+	"runtime"
 	"sync"
 	"time"
+)
+
+const (
+	NumAuctions    = 40
+	SimulatedVCPUs = 4
 )
 
 const (
@@ -60,7 +67,48 @@ func startAuction(auctionId int, wg *sync.WaitGroup, resultChan chan models.Auct
 	}
 }
 
-func StartAuctions() {}
+func StartAuctions() {
+	runtime.GOMAXPROCS(SimulatedVCPUs)
+
+	overallStartTime := time.Now()
+
+	var wg sync.WaitGroup
+	resultChan := make(chan models.AuctionResult, NumAuctions)
+
+	fmt.Printf("Launching %d concurrent auctions...\n", NumAuctions)
+	for i := 1; i <= NumAuctions; i++ {
+		wg.Add(1)
+		go startAuction(i, &wg, resultChan)
+	}
+
+	wg.Wait()
+
+	close(resultChan)
+
+	overallEndTime := time.Now()
+	totalExecutionTime := overallEndTime.Sub(overallStartTime)
+
+	var completedAuctions int
+	for res := range resultChan {
+		completedAuctions++
+		status := "No Bids Received"
+		if res.WinnerId != 0 {
+			status = fmt.Sprintf("Winner: Bidder %d %v", res.WinnerId, res.WinningBid)
+		}
+
+		fmt.Printf("Auction %d finished in %s. %s\n", res.AuctionId, res.Duration.String(), status)
+	}
+
+	fmt.Printf("Total Auctions Completed: %d\n", completedAuctions)
+	fmt.Printf("Overall Execution Time: %s\n", totalExecutionTime)
+
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	fmt.Printf("\n--- Standardized Resource Metrics (Go Runtime) ---\n")
+	fmt.Printf("vCPU Standard (GOMAXPROCS): %d\n", runtime.GOMAXPROCS(0))
+	fmt.Printf("RAM Standard (Heap Alloc): %.2f MB\n", float64(m.HeapAlloc)/1024/1024)
+	fmt.Printf("Goroutines running: %d\n", runtime.NumGoroutine())
+}
 
 func StartBidding(auctionId int, bidWg *sync.WaitGroup) (chan *models.Bid, chan struct{}) {
 	auctionDetails := GenerateAuctionDetails(auctionId)
