@@ -16,7 +16,7 @@ const (
 
 const (
 	NumBidders     = 100
-	AuctionTimeout = 500 * time.Millisecond
+	AuctionTimeout = 5 * time.Second
 )
 
 func startAuction(auctionId int, wg *sync.WaitGroup, resultChan chan models.AuctionResult) {
@@ -101,13 +101,6 @@ func StartAuctions() {
 
 	fmt.Printf("Total Auctions Completed: %d\n", completedAuctions)
 	fmt.Printf("Overall Execution Time: %s\n", totalExecutionTime)
-
-	var m runtime.MemStats
-	runtime.ReadMemStats(&m)
-	fmt.Printf("\n--- Standardized Resource Metrics (Go Runtime) ---\n")
-	fmt.Printf("vCPU Standard (GOMAXPROCS): %d\n", runtime.GOMAXPROCS(0))
-	fmt.Printf("RAM Standard (Heap Alloc): %.2f MB\n", float64(m.HeapAlloc)/1024/1024)
-	fmt.Printf("Goroutines running: %d\n", runtime.NumGoroutine())
 }
 
 func StartBidding(auctionId int, bidWg *sync.WaitGroup) (chan *models.Bid, chan struct{}) {
